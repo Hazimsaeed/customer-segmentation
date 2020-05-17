@@ -1,0 +1,453 @@
+---
+title: 'Marketing Analytics Session 2: Customer Segmentation'
+author: "Hazim Saeed"
+date: "April 27, 2020"
+output: pdf_document
+---
+
+
+```{r}
+s<-1
+set.seed(s)
+#load("~/.RData")
+library(cluster)  # cluster analysis methods
+library(dplyr) # for data cleaning
+library(Rtsne) # for t-SNE plot
+library(ggplot2) # for visualization
+library(klaR)
+library(gplots)
+library(rmarkdown)
+library(ggfortify)
+library(cluster)
+library(fpc)
+library(factoextra)
+library(NbClust)
+library(scatterplot3d)
+library(cluster) 
+library(pheatmap)
+library(RColorBrewer)
+
+```
+
+
+```{r}
+set.seed(s)
+dat<-read.csv('Medicine_data_with_ID.csv')
+dat[dat == 'No ans.'] <- NA
+dat<-dat[!is.na(dat$ID), ]
+mydata<-dat[-1,]
+```
+
+
+```{r}
+set.seed(s)
+mydata$Constantly.under.stress <- factor (mydata$Constantly.under.stress)
+mydata$Stuggle.with.work.life.balance <- factor (mydata$Stuggle.with.work.life.balance)
+mydata$Symptoms.don.t.slow.me.down <- factor (mydata$Symptoms.don.t.slow.me.down)
+mydata$Concerned.about.interaction.of.medicine.w.Rx <- factor (mydata$Concerned.about.interaction.of.medicine.w.Rx)
+mydata$Concerned.about.interaction.of.medicine.w.alcohol <- factor (mydata$Concerned.about.interaction.of.medicine.w.alcohol)
+mydata$Lookout.for.newest.medicine <- factor (mydata$Lookout.for.newest.medicine)
+mydata$Waging.war.on.symptoms <- factor (mydata$Waging.war.on.symptoms)
+mydata$Need.Fast.acting.medicine <- factor (mydata$Need.Fast.acting.medicine)
+mydata$Don.t.care.about.cost.if.works <- factor (mydata$Don.t.care.about.cost.if.works)
+mydata$Medicine.that.won.t.upset.stomach <- factor (mydata$Medicine.that.won.t.upset.stomach)
+mydata$Need.long.lasting.affect<- factor (mydata$Need.long.lasting.affect)
+mydata$Get.info.on.different.medicine.from.family.and.friends<- factor (mydata$Get.info.on.different.medicine.from.family.and.friends)
+mydata$Carry.medicince.everywhere<- factor (mydata$Carry.medicince.everywhere)
+mydata$Medicine.at.first.sign.of.symptoms<- factor (mydata$Medicine.at.first.sign.of.symptoms)
+mydata$Need.strong.medicine<- factor (mydata$Need.strong.medicine)
+mydata$Interested.in.all.alternate.medicine<- factor (mydata$Interested.in.all.alternate.medicine)
+data_for_clustering<-mydata
+customerTrends<-mydata
+
+
+```
+
+
+```{r}
+set.seed(s)
+glimpse(data_for_clustering)
+data_for_clustering<-data_for_clustering[-1,]
+summary(data_for_clustering[,-1])
+```
+
+```{r}
+set.seed(s)
+mydata <- sapply( mydata, as.numeric )
+mydata[is.na(mydata)] <- 0
+gower_dist <- daisy(data_for_clustering[,-1], metric = "gower",
+                    type = list(logratio = 3))
+summary(gower_dist)
+```
+
+
+```{r}
+set.seed(s)
+gower_mat <- as.matrix(gower_dist)
+# Output most similar pair
+data_for_clustering[
+  which(gower_mat == min(gower_mat[gower_mat != min(gower_mat)]),
+        arr.ind = TRUE)[1, ], ]
+```
+
+
+```{r}
+set.seed(s)
+# Output most dissimilar pair
+data_for_clustering[
+  which(gower_mat == max(gower_mat[gower_mat != max(gower_mat)]),
+        arr.ind = TRUE)[1, ], ]
+```
+
+```{r}
+set.seed(s)
+d <- dist(as.matrix(mydata))   # find distance matrix 
+hc <- hclust(d)                # apply hirarchical clustering 
+plot(hc)
+```
+```{r}
+set.seed(s)
+# split the data
+train <- sample(1:nrow(mydata[,-1]), size = 0.7 * nrow(mydata[,-1]))
+
+VAFS_train <- numeric(10)
+VAFS_holdout <- numeric(10)
+km_train_results <- list()
+km_hold_results <- list()
+for(i in 2:10){
+  # train
+  km_res <- kmeans(mydata[,-1][train,], centers = i, nstart = 50 )
+  km_train_results[[i]] <- km_res
+  VAF <- km_res$betweenss/ km_res$totss
+  VAFS_train[[i]] <- VAF
+  # holdout
+  km_res <- kmeans(mydata[,-1][-train,], centers = km_res$centers, nstart = 50 )
+  km_hold_results[[i]] <- km_res
+  VAF <- km_res$betweenss/ km_res$totss
+  VAFS_holdout[[i]] <- VAF
+  
+}
+res <- data.frame(k = 2:10, VAF_train = VAFS_train[2:10],VAF_hldout = VAFS_holdout[2:10])
+res
+
+```
+
+
+```{r}
+set.seed(s)
+plot(res$k,  res$VAF_train, type = 'b',col='red', xlab = "Number of Clusters",
+     ylab = " VAF")
+lines(res$k,  res$VAF_hldout, type = 'b',col='blue', xlab = "Number of Clusters")
+legend(x = "bottomright",
+       legend = c("Train","Test"),
+       lty = c(1,1),
+       col = c("red","blue"))
+```
+
+
+
+```{r}
+set.seed(s)
+fviz_nbclust(mydata[,-1][train,], kmeans, method = "wss") +
+    geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+
+# Silhouette method
+fviz_nbclust(mydata[,-1][train,], kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+
+# Gap statistic
+# nboot = 50 to keep the function speedy. 
+# recommended value: nboot= 500 for your analysis.
+# Use verbose = FALSE to hide computing progression.
+set.seed(s)
+fviz_nbclust(mydata[,-1][train,], kmeans, nstart = 25,  method = "gap_stat", nboot = 50)+
+  labs(subtitle = "Gap statistic method")
+```
+
+
+
+```{r}
+set.seed(s)
+fviz_nbclust(mydata[,-1][-train,], kmeans, method = "wss") +
+    geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+
+# Silhouette method
+fviz_nbclust(mydata[,-1][-train,], kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+
+# Gap statistic
+# nboot = 50 to keep the function speedy. 
+# recommended value: nboot= 500 for your analysis.
+# Use verbose = FALSE to hide computing progression.
+set.seed(s)
+fviz_nbclust(mydata[,-1][-train,], kmeans, nstart = 25,  method = "gap_stat", nboot = 50)+
+  labs(subtitle = "Gap statistic method")
+```
+
+
+```{r}
+set.seed(s)
+res_km <- kmeans(mydata[,-1], centers = 4, nstart = 100)
+print(table(res_km$cluster))
+
+```
+
+```{r}
+set.seed(s)
+print("Clusters sizes")
+for(i in 2:5){
+  cat(paste0("Number of Cluster ",i," relative size"))
+ print( round(km_hold_results[[i]]$size))
+}
+
+```
+
+
+
+
+```{r}
+set.seed(s)
+source('komeans.R')
+VAFS_otrain <- numeric(10)
+VAFS_oholdout <- numeric(10)
+kom_train_results <- list()
+for(i in 3:5){
+  # train
+  kom_res <- komeans(mydata[,-1][train,], nclust  = i, lnorm=2,tolerance=.00001,nloops = 10,seed=s)
+  kom_train_results[[i]] <- kom_res
+  VAFS_otrain[[i]] <- kom_res$VAF
+  # holdout
+    kom_res <- komeans(mydata[,-1][-train,], nclust = i,lnorm=2,tolerance=.00001,nloops = 10,seed=s)
+  VAFS_oholdout[[i]] <- kom_res$VAF
+  
+}
+res_komeans <- data.frame(k = 2:10, komeans_VAF_train = VAFS_otrain[2:10],komeans_VAF_hldout = VAFS_oholdout[2:10])
+res_komeans[2:4,]
+
+```
+
+
+
+```{r}
+set.seed(s)
+cbind(res,res_komeans[,2:3])
+
+```
+
+
+```{r}
+set.seed(s)
+komean_res <- komeans(mydata[,-1],nclust=4,lnorm=2,tolerance=.001,nloops = 12,seed=s)
+
+```
+
+# Traying Mixture Models via Mclust in package mclust to extract 1 to 4 Gaussian mixtures (clusters) with diagonal covariance matrices in each cluster.
+
+```{r echo = TRUE}
+set.seed(s)
+require(mclust)
+x=Mclust(mydata[,-1],G=1:4, model = "VVI")
+names(x)
+attributes(x)
+x$bic
+x$BIC
+x$parameters
+round(x$z,0)
+```
+
+```{r}
+set.seed(s)
+table(km_res$cluster)
+table(komean_res$Group)
+```
+
+
+
+
+
+```{r}
+set.seed(s)
+k2 <- kmeans(mydata[,-1], centers = 2, nstart = 25)
+k3 <- kmeans(mydata[,-1], centers = 3, nstart = 25)
+k4 <- kmeans(mydata[,-1], centers = 4, nstart = 25)
+k5 <- kmeans(mydata[,-1], centers = 5, nstart = 25)
+
+# plots to compare
+p1 <- fviz_cluster(k2, geom = "point", data =  mydata[,-1]) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = mydata[,-1]) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = mydata[,-1]) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = mydata[,-1]) + ggtitle("k = 5")
+
+library(gridExtra)
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+```
+
+```{r}
+set.seed(s)
+kmeansDat <- mydata[,-1]  
+kmeansDat.t <- t(mydata[,-1])  
+km.out <- list()
+sil.out <- list()
+x <- vector()
+y <- vector()
+minClust <- 2    # Hypothesized minimum number of segments
+maxClust <- 10      # Hypothesized maximum number of segments
+
+for (centr in minClust:maxClust) {
+        i <- centr-(minClust-1) # relevels start as 1, and increases with centr
+        set.seed(s) # For reproducibility
+        
+        km.out[i] <- list(kmeans(kmeansDat.t, centers = centr, nstart = 50))
+        sil.out[i] <- list(silhouette(km.out[[i]][[1]], dist(kmeansDat.t)))
+        x[i] = centr  # value of k
+        y[i] = summary(sil.out[[i]])[[4]]  # Silhouette average width
+}
+
+set.seed(s)
+sil_width <- c(NA)
+
+for(i in 2:16){
+  
+  pam_fit <- pam(gower_dist,
+                 diss = TRUE,
+                 k = i)
+  
+  sil_width[i] <- pam_fit$silinfo$avg.width
+  
+}
+
+tsne_obj <- Rtsne(gower_dist, is_distance = TRUE)
+
+tsne_data <- tsne_obj$Y %>%
+  data.frame() %>%
+  setNames(c("X", "Y")) %>%
+  mutate(cluster = factor(pam_fit$clustering),
+         response = data_for_clustering$ID)
+
+ggplot(aes(x = X, y = Y), data = tsne_data) +
+  geom_point(aes(color = cluster))
+```
+
+```{r}
+set.seed(s)
+fviz_cluster(res_km, data = mydata[,-1])
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+#write.csv(pam_results$the_summary,"cluster.csv")
+```
+
+
+```{r}
+set.seed(s)
+# Cluster Interpretation
+
+pam_fit <- pam(gower_dist, diss = TRUE, k = 4)
+
+pam_results <- data_for_clustering %>%
+  dplyr::select(-ID) %>%
+  mutate(cluster = pam_fit$clustering) %>%
+  group_by(cluster) %>%
+  do(the_summary = summary(.))
+
+pam_results$the_summary
+write.csv(pam_results$the_summary,"cluster.csv")
+```
+
+
+```{r}
+set.seed(s)
+data_for_clustering[pam_fit$medoids, ]
+```
+
+
+
+```{r}
+set.seed(s)
+data_for_clustering$cluster <- pam_fit$clustering
+response_table <- table(data_for_clustering$cluster, data_for_clustering$ID)
+cat("\nPercentage Responses\n")
+for (i in 1:3)
+  cat("\n", toupper(letters[i]),
+      round(100 * response_table[i,2] /
+              sum(response_table[i,]), digits = 1))
+print(round(100 * table(data_for_clustering$cluster) / nrow(data_for_clustering), digits = 1))
+
+```
+
+
+
+
+
+```{r}
+set.seed(s)
+kmeansDat <- mydata[,-1]  # Extract only customer columns
+kmeansDat.t <- t(mydata[,-1])  # Get customers in rows and products in columns
+# Setup for k-means loop 
+km.out <- list()
+sil.out <- list()
+x <- vector()
+y <- vector()
+minClust <- 2    # Hypothesized minimum number of segments
+maxClust <- 10      # Hypothesized maximum number of segments
+
+for (centr in minClust:maxClust) {
+        i <- centr-(minClust-1) # relevels start as 1, and increases with centr
+        set.seed(s) # For reproducibility
+        
+        km.out[i] <- list(kmeans(kmeansDat.t, centers = centr, nstart = 50))
+        sil.out[i] <- list(silhouette(km.out[[i]][[1]], dist(kmeansDat.t)))
+        # Used for plotting silhouette average widths
+        x[i] = centr  # value of k
+        y[i] = summary(sil.out[[i]])[[4]]  # Silhouette average width
+}
+maxSilRow <- 4          # Row number of max silhouette value
+optimalClusters <- x[maxSilRow]    # Number of clusters
+km.out.best <- km.out[[maxSilRow]] # k-means output of best cluster
+
+# Create list of customer names for each cluster
+clusterNames <- list()
+clusterList <- list()
+for (clustr in 1:optimalClusters) {
+  clusterNames[clustr] <- paste0("X", clustr)
+  clusterList[clustr] <- list(
+    names(
+        km.out.best$cluster[km.out.best$cluster == clustr]
+        )
+    )
+}
+names(clusterList) <- clusterNames
+
+print(clusterList)
+```
+
+
+
+```{r}
+set.seed(s)
+autoplot(kmeans(mydata[,-1],4), data = mydata[,-1])
+```
+```{r}
+set.seed(s)
+pheatmap(res_km$centers[1:4,], color=brewer.pal(9,"Blues"))
+
+```
