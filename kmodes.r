@@ -1,5 +1,5 @@
 kmodes=function (data = data, nclust = nclust, niterations = niterations, nloops = nloops, seed = seed) 
-{
+{ 
   prevMAF = -1
   niterations = 25
   set.seed(seed)
