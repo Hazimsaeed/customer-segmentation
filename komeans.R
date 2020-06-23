@@ -64,7 +64,7 @@ fun.okc.2= function (data = data, nclust = nclust, lnorm = lnorm, tolerance = to
       }
       S[, k] = as.vector(s)
       W[k, ] = as.vector(w)
-    }
+    } 
     if (lnorm == 2) 
       sse[i] = sum((datanorm - S %*% W)^2, na.rm = TRUE)/sum((datanorm - 
                                                                 mean(datanorm, na.rm = TRUE))^2, na.rm = TRUE)
