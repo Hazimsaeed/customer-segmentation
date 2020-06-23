@@ -10,7 +10,7 @@ kmodes=function (data = data, nclust = nclust, niterations = niterations, nloops
       ind = i
       z.old = z
     }
-  }
+  } 
   return(list(data = z.old$Data, 
               Group = z.old$Groups, Centroids = z.old$Centroids,  
               Cluster.Sizes= z.old$Cluster.Sizes,
