@@ -4,7 +4,7 @@ author: "Hazim Saeed"
 date: "April 27, 2020"
 output: pdf_document
 ---
-
+ 
 
 ```{r}
 s<-1
