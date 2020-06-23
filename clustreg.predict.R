@@ -14,4 +14,4 @@ clustreg.predict=function(results,newdat){
   
   return(list(results=results,newdata=newdat,cluster=c,yhat=yhat,rsq=rsq))
   
-}
+} 
