@@ -30,7 +30,7 @@ library(RColorBrewer)
 ```
 
 
-```{r}
+```{r} 
 set.seed(s)
 dat<-read.csv('Medicine_data_with_ID.csv')
 dat[dat == 'No ans.'] <- NA
