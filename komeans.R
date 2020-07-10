@@ -57,7 +57,7 @@ fun.okc.2= function (data = data, nclust = nclust, lnorm = lnorm, tolerance = to
         }
         if (lnorm == 1) {
           se = sum(abs(dstar - s %*% w), na.rm = TRUE)
-        }
+        } 
         percentse = 1 - se/prevse
         prevse = se
         l = l + 1
