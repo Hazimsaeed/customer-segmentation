@@ -6,7 +6,7 @@ clustreg=function(dat,k,tries,sed,niter){
   res=list()
   rsq.best=0
   for(l in 1:tries) {
-    
+     
     c = sample(1:k,nrow(dat),replace=TRUE)
     yhat=rep(NA,nrow(dat))
     for(i in 1:niter) {		
